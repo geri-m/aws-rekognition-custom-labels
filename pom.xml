@@ -33,8 +33,8 @@
         <project.reporting.outputEncoding>
             UTF-8
         </project.reporting.outputEncoding>
-        <java.source.version>11</java.source.version>
-        <java.target.version>11</java.target.version>
+        <java.source.version>1.8</java.source.version>
+        <java.target.version>1.8</java.target.version>
         <junit.version>5.4.2</junit.version>
         <log4j2.version>2.11.2</log4j2.version>
         <hamcrest.version>2.1</hamcrest.version>
@@ -59,14 +59,12 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>${log4j2.version}</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>${log4j2.version}</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -98,7 +96,6 @@
                     <target>${java.target.version}</target>
                 </configuration>
             </plugin>
-
         </plugins>
     </build>
 </project>
