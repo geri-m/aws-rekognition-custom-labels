@@ -3,19 +3,31 @@ package at.madlmayr.rekognition;
 
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
-import com.amazonaws.services.rekognition.model.CreateProjectRequest;
-import com.amazonaws.services.rekognition.model.CreateProjectResult;
+import com.amazonaws.services.rekognition.model.*;
+import com.amazonaws.waiters.Waiter;
+import com.amazonaws.waiters.WaiterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringTokenizer;
 
 
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        printFile();
+
+    }
+
+
+    public static void createModel() {
         LOGGER.info("Main");
-        String projectName = "some-classifier";
+        String projectName = "dress-length";
 
         try {
             // This creates a new Project
@@ -23,14 +35,244 @@ public class Main {
             CreateProjectRequest createProjectRequest = new CreateProjectRequest()
                     .withProjectName(projectName);
             CreateProjectResult response = rekognitionClient.createProject(createProjectRequest);
-
             LOGGER.info("Project ARN: " + response.getProjectArn());
+        } catch (Exception e) {
+            LOGGER.error(e.toString());
+        }
+        LOGGER.info("Done...");
+    }
+
+    /**
+     * Static Method to generate three manifest files out of a TSV File.
+     *
+     * @throws Exception In case file access has a problem, this will be thrown.
+     */
+
+    private static void printFile() throws Exception {
+        final String mini = "mini";
+        final String midi = "midi";
+        final String longDress = "long";
+
+        final String train = "train";
+        final String test = "test";
+        final String val = "val";
+
+        // These are the File we are going to write.
+        File trainFile = new File("train.manifest");
+        File testFile = new File("test.manifest");
+        File valFile = new File("cal.manifest");
+
+        trainFile.createNewFile();
+        testFile.createNewFile();
+        valFile.createNewFile();
+
+        BufferedWriter trainWriter = new BufferedWriter(new FileWriter(trainFile));
+        BufferedWriter testWriter = new BufferedWriter(new FileWriter(testFile));
+        BufferedWriter valWriter = new BufferedWriter(new FileWriter(valFile));
+
+        // This is the input file.
+        // Structure of the input file format:
+        // image_key	long	midi	mini
+        // images/length/train/mini/bfv3hlqxldprr8wavnnq.jpg	0	0	1
+        File file = new File(
+                Main.class.getClassLoader().getResource("length_samples.tsv").getFile()
+        );
+
+        StringTokenizer st;
+        BufferedReader tsvFile = new BufferedReader(new FileReader(file));
+        String dataRow = tsvFile.readLine(); // Read first line.
+
+        // Amount of Dresses in the Category Long, Mini, Midi
+        int countLong = 0;
+        int countMini = 0;
+        int countMidi = 0;
+
+        // Amount of Records for Test, Evaluation and Training
+        int countTest = 0;
+        int countVal = 0;
+        int countTrain = 0;
+
+        // Iterate row-by-row over the TSV File
+        while (dataRow != null) {
+            BufferedWriter temp = null;
+
+            // Generate Token from the Line which are separated by Tab.
+            st = new StringTokenizer(dataRow, "\t");
+            List<String> dataArray = new ArrayList<String>();
+            while (st.hasMoreElements()) {
+                dataArray.add(st.nextElement().toString());
+            }
+
+            // Element on Index 0 Contains the Image Path and therefore the information if test/eval/train
+            // Based on the findings we chose the appropriate File Writer.
+            if (dataArray.get(0).contains(train)) {
+                countTrain++;
+                temp = trainWriter;
+            } else if (dataArray.get(0).contains(test)) {
+                countTest++;
+                temp = testWriter;
+            } else if (dataArray.get(0).contains(val)) {
+                temp = valWriter;
+                countVal++;
+            } else {
+                LOGGER.error("Unclear what to do with this: {}", dataArray.get(0));
+                continue;
+            }
+
+            // Element on Index 0 also contains the information on midi, mini and maxi.
+            if (dataArray.get(0).contains(mini)) {
+                countMini++;
+                temp.write("{\"source-ref\":\"s3://madlmayr-dresses/dresses/" + dataArray.get(0).replace("images/length/", "") + "\", \"dress-length\":1, \"dress-length-metadata\":{ \"confidence\":1, \"job-name\":\"labeling-job/dress-lenght\", \"class-name\":\"mini\", \"human-annotated\":\"yes\", \"creation-date\":\"2020-04-20T14:17:37.603Z\", \"type\":\"groundtruth/image-classification\" } }\n");
+            } else if (dataArray.get(0).contains(midi)) {
+                countMidi++;
+                temp.write("{\"source-ref\":\"s3://madlmayr-dresses/dresses/" + dataArray.get(0).replace("images/length/", "") + "\", \"dress-length\":1, \"dress-length-metadata\":{ \"confidence\":1, \"job-name\":\"labeling-job/dress-lenght\", \"class-name\":\"midi\", \"human-annotated\":\"yes\", \"creation-date\":\"2020-04-20T14:17:37.603Z\", \"type\":\"groundtruth/image-classification\" } }\n");
+            } else if (dataArray.get(0).contains(longDress)) {
+                countLong++;
+                temp.write("{\"source-ref\":\"s3://madlmayr-dresses/dresses/" + dataArray.get(0).replace("images/length/", "") + "\", \"dress-length\":1, \"dress-length-metadata\":{ \"confidence\":1, \"job-name\":\"labeling-job/dress-lenght\", \"class-name\":\"long\", \"human-annotated\":\"yes\", \"creation-date\":\"2020-04-20T14:17:37.603Z\", \"type\":\"groundtruth/image-classification\" } }\n");
+            } else {
+                LOGGER.error("Unclear what to do with this: {}", dataArray.get(0));
+            }
+
+
+            dataRow = tsvFile.readLine(); // Read next line of data.
+        } //  while (dataRow != null)
+
+        // Close the file once all data has been read.
+        tsvFile.close();
+        valWriter.close();
+        testWriter.close();
+        trainWriter.close();
+        // End the printout with a blank line.
+        LOGGER.info("Done");
+
+        // Print some Stats.
+        LOGGER.info("Long {}, Midi {}, Mini {}, Total {}", countLong, countMidi, countMini, (countLong + countMini + countMidi));
+        LOGGER.info("Train {}, Test {}, Val {}, Total {}", countTrain, countTest, countVal, (countTrain + countTest + countVal));
+    }
+
+    public void trainModel() {
+
+        // the project ARN is what we get from the "Create Project".
+        String projectArn = "project_arn";
+
+        String versionName = "version_name";
+        String outputBucket = "output_bucket";
+        String outputFolder = "output_folder";
+
+        // Specify where the images and the generated Manifest is on S3.
+        String trainingBucket = "training_bucket";
+        String trainingManifest = "training_manifest";
+        String testingBucket = "testing_bucket";
+        String testingManifest = "testing_manifest";
+
+
+        OutputConfig outputConfig = new OutputConfig()
+                .withS3Bucket(outputBucket)
+                .withS3KeyPrefix(outputFolder);
+
+
+        GroundTruthManifest trainingGroundTruthManifest = new GroundTruthManifest()
+                .withS3Object(new S3Object()
+                        .withBucket(trainingBucket)
+                        .withName(trainingManifest));
+
+        // Use the Manifest with the Line JSON to create the Training Data.
+        TrainingData trainingData = new TrainingData()
+                .withAssets(new Asset()
+                        .withGroundTruthManifest(trainingGroundTruthManifest));
+
+        // Create a Testing Data set out of the Training Data
+        TestingData testingData = new TestingData()
+                .withAutoCreate(true);
+
+        // OR
+        // create a dedicated Testing Data set.
+        /*
+         GroundTruthManifest testingGroundTruthManifest = new GroundTruthManifest()
+                .withS3Object(new S3Object()
+                        .withBucket(testingBucket)
+                        .withName(testingManifest));
+
+
+         TestingData testingData = new TestingData()
+              .withAssets(new Asset[] {new Asset()
+              .withGroundTruthManifest(testingGroundTruthManifest)});
+         */
+
+
+        AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
+
+        CreateProjectVersionRequest request = new CreateProjectVersionRequest()
+                .withOutputConfig(outputConfig)
+                .withProjectArn(projectArn)
+                .withTrainingData(trainingData)
+                .withTestingData(testingData)
+                .withVersionName(versionName);
+
+        try {
+            CreateProjectVersionResult result = rekognitionClient.createProjectVersion(request);
+
+            LOGGER.info("Model ARN: {}", result.getProjectVersionArn());
+            LOGGER.info("Training model");
+
+            DescribeProjectVersionsRequest describeProjectVersionsRequest = new DescribeProjectVersionsRequest()
+                    .withVersionNames(versionName)
+                    .withProjectArn(projectArn);
+
+
+            Waiter<DescribeProjectVersionsRequest> waiter = rekognitionClient.waiters().projectVersionTrainingCompleted();
+            waiter.run(new WaiterParameters<>(describeProjectVersionsRequest));
+
+            DescribeProjectVersionsResult response = rekognitionClient.describeProjectVersions(describeProjectVersionsRequest);
+
+            for (ProjectVersionDescription projectVersionDescription : response.getProjectVersionDescriptions()) {
+                LOGGER.info("Status:  {}", projectVersionDescription.getStatus());
+            }
+            LOGGER.info("Done");
 
 
         } catch (Exception e) {
-            System.out.println(e.toString());
+            LOGGER.error(e.toString());
         }
-        LOGGER.info("Done...");
+        LOGGER.info("Done.");
+    }
+
+    /**
+     * Create a line JSON file
+     * <p>
+     * https://docs.aws.amazon.com/sagemaker/latest/dg/sms-data-output.html
+     * <p>
+     * ** SAMPLE ***
+     * {
+     * "source-ref":"s3://custom-labels-console-eu-west-1-27b0b4db6f/assets/shoe-testing/1587392000/31.jpg",
+     * "shoe-testing_leihnen-schuhe":1,
+     * "shoe-testing_leihnen-schuhe-metadata":{
+     * "confidence":1,
+     * "job-name":"labeling-job/shoe-testing_leihnen-schuhe",
+     * "class-name":"leihnen-schuhe",
+     * "human-annotated":"yes",
+     * "creation-date":"2020-04-20T14:17:37.603Z",
+     * "type":"groundtruth/image-classification"
+     * }
+     * }
+     * <p>
+     * ** STRUCTURE ***
+     * {
+     * "source-ref": "S3 bucket location", # Required
+     * "sport":0, # Required
+     * "sport-metadata": { # Required
+     * "class-name": "football", # Required
+     * "confidence": 0.8, # Required
+     * "type":"groundtruth/image-classification", # Required
+     * "job-name": "identify-sport", # Not required
+     * "human-annotated": "yes", # Required
+     * "creation-date": "2018-10-18T22:18:13.527256" # Required#
+     * }
+     * }
+     **/
+    public void createManifestFile() {
+        InputStream inputStream = getClass()
+                .getClassLoader().getResourceAsStream("length_samples.tsv");
 
     }
 
