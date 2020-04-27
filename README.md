@@ -15,3 +15,22 @@ export AWS_SECRET_ACCESS_KEY=yyy
 ``` 
 
 The Java SDK reads the environment variables and uses them to access the AWS API.
+
+
+## Setup Project with your ARNs
+
+1) Make a copy of `project.properties` and name it `local.properties`
+2) Put Project ARN and Project Version ARN into the properties file. 
+
+### ProjectArn
+
+```
+aws rekognition  describe-projects
+```
+
+### Project-Version-Arn
+
+```
+aws rekognition describe-project-versions --project-arn <enter-project-arn-here>
+```
+
