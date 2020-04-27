@@ -1,5 +1,10 @@
 package at.madlmayr.rekognition;
 
+import com.amazonaws.auth.policy.Policy;
+import com.amazonaws.auth.policy.Principal;
+import com.amazonaws.auth.policy.Resource;
+import com.amazonaws.auth.policy.Statement;
+import com.amazonaws.auth.policy.actions.S3Actions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
@@ -20,10 +25,22 @@ public class RemoteBucket {
     private final AmazonS3 s3Client;
     private final String name;
 
+
     public RemoteBucket(final String preFix) {
         s3Client = AmazonS3ClientBuilder.defaultClient();
         name = preFix + "-" + givenUsingJava8_whenGeneratingRandomAlphabeticString_thenCorrect();
         LOGGER.info("Bucket Name {}", name);
+    }
+
+    // Sets a public read policy on the bucket.
+    public static String getPublicReadPolicy(String bucketName) {
+        Policy bucket_policy = new Policy().withStatements(
+                new Statement(Statement.Effect.Allow)
+                        .withPrincipals(Principal.AllUsers)
+                        .withActions(S3Actions.GetObject)
+                        .withResources(new Resource(
+                                "arn:aws:s3:::" + bucketName + "/*")));
+        return bucket_policy.toJson();
     }
 
     public String createBucket() throws DemoException {
@@ -32,6 +49,7 @@ public class RemoteBucket {
         } else {
             try {
                 s3Client.createBucket(name);
+                s3Client.setBucketPolicy(name, getPublicReadPolicy(name));
             } catch (AmazonS3Exception e) {
                 LOGGER.error(e.getErrorMessage());
                 throw new DemoException(e.getErrorMessage());
@@ -40,10 +58,7 @@ public class RemoteBucket {
         return name;
     }
 
-    public void updateLoadImages() throws DemoException, IOException {
-
-        String pathToTrainManifest = "shoes/train/train.manifest";
-        String pathToTestManifest = "shoes/test/test.manifest";
+    public void updateLoadImages(String pathToTrainManifest, String pathToTestManifest) throws DemoException, IOException {
 
         ClassLoader classLoader = ClassLoader.getSystemClassLoader();
         URL urlToTrainFile = classLoader.getResource(pathToTrainManifest);
