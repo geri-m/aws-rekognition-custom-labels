@@ -28,9 +28,10 @@ public class Main {
         String projectVersionArn = properties.getProperty("project-version-arn");
         String projectVersion = properties.getProperty("project-version");
 
-        RemoteBucket r = new RemoteBucket("madlmayr-dresses");
+        RemoteBucket r = new RemoteBucket("demo-shoes");
         r.createBucket();
         r.updateLoadImages();
+        r.cleanup();
 
 
         Model dresses = new Model();

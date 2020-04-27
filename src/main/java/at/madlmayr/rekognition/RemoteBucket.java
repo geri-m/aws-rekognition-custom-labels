@@ -2,10 +2,7 @@ package at.madlmayr.rekognition;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +19,6 @@ public class RemoteBucket {
 
     private final AmazonS3 s3Client;
     private final String name;
-    private Bucket bucket;
 
     public RemoteBucket(final String preFix) {
         s3Client = AmazonS3ClientBuilder.defaultClient();
@@ -35,8 +31,7 @@ public class RemoteBucket {
             LOGGER.warn("Bucket '{}' already exists.", name);
         } else {
             try {
-                bucket = s3Client.createBucket(name);
-
+                s3Client.createBucket(name);
             } catch (AmazonS3Exception e) {
                 LOGGER.error(e.getErrorMessage());
                 throw new DemoException(e.getErrorMessage());
@@ -96,6 +91,7 @@ public class RemoteBucket {
     }
 
     public void writeManifestEntry(BufferedWriter writer, String path, String type) throws IOException {
+        // this is not a very nice construct, but does to job for now.
         writer.write("{\"source-ref\":\"s3://" + this.name + "/" + path + "\", \"shoe-type\":1, \"shoe-type-metadata\":{ \"confidence\":1, \"job-name\":\"labeling-job/shoe-type\", \"class-name\":\"" + type + "\", \"human-annotated\":\"yes\", \"creation-date\":\"2020-04-20T14:17:37.603Z\", \"type\":\"groundtruth/image-classification\" } }\n");
     }
 
@@ -113,7 +109,6 @@ public class RemoteBucket {
         request.setMetadata(metadata);
         s3Client.putObject(request);
         LOGGER.info("'{}' uploaded.", path);
-
     }
 
     public void cleanup() throws DemoException {
@@ -121,7 +116,39 @@ public class RemoteBucket {
             LOGGER.warn("Bucket '{}' does NOT exists.", name);
         } else {
             try {
+                ObjectListing objectListing = s3Client.listObjects(name);
+                while (true) {
+                    for (S3ObjectSummary s3ObjectSummary : objectListing.getObjectSummaries()) {
+                        s3Client.deleteObject(name, s3ObjectSummary.getKey());
+                    }
+
+                    // If the bucket contains many objects, the listObjects() call
+                    // might not return all of the objects in the first listing. Check to
+                    // see whether the listing was truncated. If so, retrieve the next page of objects
+                    // and delete them.
+                    if (objectListing.isTruncated()) {
+                        objectListing = s3Client.listNextBatchOfObjects(objectListing);
+                    } else {
+                        break;
+                    }
+                }
+
+                // Delete all object versions (required for versioned buckets).
+                VersionListing versionList = s3Client.listVersions(new ListVersionsRequest().withBucketName(name));
+                while (true) {
+                    for (S3VersionSummary vs : versionList.getVersionSummaries()) {
+                        s3Client.deleteVersion(name, vs.getKey(), vs.getVersionId());
+                    }
+
+                    if (versionList.isTruncated()) {
+                        versionList = s3Client.listNextBatchOfVersions(versionList);
+                    } else {
+                        break;
+                    }
+                }
+
                 s3Client.deleteBucket(name);
+                LOGGER.info("Bucket {} deleted", name);
             } catch (AmazonS3Exception e) {
                 LOGGER.error(e.getErrorMessage());
                 throw new DemoException(e.getErrorMessage());
