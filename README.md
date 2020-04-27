@@ -34,3 +34,5 @@ aws rekognition  describe-projects
 aws rekognition describe-project-versions --project-arn <enter-project-arn-here>
 ```
 
+
+## Thruput

@@ -55,6 +55,11 @@
             <version>1.11.764</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+            <version>1.11.764</version>
+        </dependency>
         <!-- since 2.7 this include the logj4-api as well -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

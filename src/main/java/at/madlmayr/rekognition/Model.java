@@ -8,6 +8,8 @@ import com.amazonaws.waiters.WaiterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 public class Model {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Model.class);
@@ -37,7 +39,7 @@ public class Model {
         StartProjectVersionResult result = rekognitionClient.startProjectVersion(request);
 
         LOGGER.info("Status: {}", result.getStatus());
-        LOGGER.info("Status: 'STARTING' might be unchanged for up to 10 min. So don't worries if nothing is happening");
+        LOGGER.info("Status: 'STARTING' might be unchanged for up to 10 min. So don't worries if nothing is happening immediatly");
         DescribeProjectVersionsRequest describeProjectVersionsRequest = new DescribeProjectVersionsRequest()
                 .withVersionNames(versionName)
                 .withProjectArn(projectArn);
@@ -121,4 +123,18 @@ public class Model {
         LOGGER.info("trainModel - Done");
     }
 
+    public void detect(String projectVersionArn, String bucket, String pathToImage) {
+        float minConfidence = 90;
+        DetectCustomLabelsRequest request = new DetectCustomLabelsRequest()
+                .withProjectVersionArn(projectVersionArn)
+                .withImage(new Image().withS3Object(new S3Object().withName(pathToImage).withBucket(bucket)))
+                .withMinConfidence(minConfidence);
+
+        DetectCustomLabelsResult result = rekognitionClient.detectCustomLabels(request);
+
+        List<CustomLabel> customLabels = result.getCustomLabels();
+        for (CustomLabel customLabel : customLabels) {
+            LOGGER.info("Label '{}' with Confidence '{}' detected.", customLabel.getName(), customLabel.getConfidence());
+        }
+    }
 }

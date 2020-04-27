@@ -6,15 +6,15 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.util.Properties;
 
-public class DressDemo {
+public class Main {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DressDemo.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {
         // Reading Project Properties from Properties File.
         Properties properties = new Properties();
 
-        InputStream stream = DressDemo.class.getClassLoader().getResourceAsStream("local.properties");
+        InputStream stream = Main.class.getClassLoader().getResourceAsStream("local.properties");
         if (stream != null) {
             properties.load(stream);
             stream.close();
@@ -28,10 +28,22 @@ public class DressDemo {
         String projectVersionArn = properties.getProperty("project-version-arn");
         String projectVersion = properties.getProperty("project-version");
 
+        RemoteBucket r = new RemoteBucket("madlmayr-dresses");
+        r.createBucket();
+        r.updateLoadImages();
+
+
         Model dresses = new Model();
-        dresses.start(projectVersionArn, projectArn, projectVersion);
-        dresses.stop(projectVersionArn);
+        // dresses.start(projectVersionArn, projectArn, projectVersion);
+
+
+        // dresses.stop(projectVersionArn);
+        /*
+        for (String image : images) {
+            dresses.detect(projectVersionArn, "madlmayr-dresses", image);
+        }
+        */
     }
 
-
 }
+

@@ -60,8 +60,8 @@ public class Utils {
         final String val = "val";
 
         // These are the File we are going to write.
-        File trainFile = new File("train.manifest");
-        File testFile = new File("test.manifest");
+        File trainFile = new File("shoes/train/train.manifest");
+        File testFile = new File("shoes/test/test.manifest");
         File valFile = new File("cal.manifest");
 
         trainFile.createNewFile();
