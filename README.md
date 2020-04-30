@@ -8,7 +8,7 @@ Make sure you created a user with ID & Key.
 
 Simple put in in `.bash_profile`. (at least on OSX)
 
-```
+``` bash
 # Private
 export AWS_ACCESS_KEY_ID=xxx
 export AWS_SECRET_ACCESS_KEY=yyy
@@ -25,13 +25,13 @@ https://docs.aws.amazon.com/de_de/rekognition/latest/dg/rekognition-dg.pdf
 
 ### ProjectArn
 
-```
+``` bash
 aws rekognition  describe-projects
 ```
 
 ### Project-Version-Arn
 
-```
+``` bash
 aws rekognition describe-project-versions --project-arn <enter-project-arn-here>
 ```
 
@@ -40,7 +40,7 @@ aws rekognition describe-project-versions --project-arn <enter-project-arn-here>
 The `ShoeClassifcationDemo` contains the main function for the demo. In the Main function you find three calls, which
 can be done also independently. 
 
-```
+``` java
 public static void main(String[] args) throws Exception {
     ShoeClassificationDemo demo = new ShoeClassificationDemo();
     demo.createAndTrainModel();
@@ -51,15 +51,15 @@ public static void main(String[] args) throws Exception {
 
 ### createAndTrainModel
 
-Upload the images to S3, creates the Manifest files, creats and trains a model. This step take up to an hour. (model
-training is time consuming). After the process is started you can stop the application, as the training will contine.
+Upload the images to S3, creates the Manifest files, creates and trains a model. This step take up to an hour. (model
+training is time consuming). After the process is started you can stop the application, as the training will continue.
 
-The relevant information on project name etc. is stored in the `local.properties` so you can contine later. 
+The relevant information on project name etc. is stored in the `local.properties` so you can continue later. 
 
 ### startAndRun
 
 This step requires that the model is trained and stopped. Thru this method the model is started ("Model-as-a-Service")
-and we run a classifcation process with one image. Then the model is stopped again. This step takes about 10 minutes.
+and we run a classification process with one image. Then the model is stopped again. This step takes about 10 minutes.
 The most time consuming part is starting the model. 
 
 ### cleanUp
@@ -67,6 +67,6 @@ The most time consuming part is starting the model.
 We remove the model versions, the model as well as the images from S3 inkl. the Manifest. 
 
 
-## Thruput
+## Through put 
 
-Round about 1.000 Images per Minute.
+Round about 1.000 Images per Minute. (measured via Images on S3).
