@@ -16,6 +16,7 @@ export AWS_SECRET_ACCESS_KEY=yyy
 
 The Java SDK reads the environment variables and uses them to access the AWS API.
 
+https://docs.aws.amazon.com/de_de/rekognition/latest/dg/rekognition-dg.pdf
 
 ## Setup Project with your ARNs
 

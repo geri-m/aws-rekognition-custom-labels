@@ -62,6 +62,13 @@ public class Model {
         LOGGER.info("Stop - Done");
     }
 
+    public void remove(String projectVersionArn) {
+        DeleteProjectRequest request = new DeleteProjectRequest().withProjectArn(projectVersionArn);
+        DeleteProjectResult result = rekognitionClient.deleteProject(request);
+        LOGGER.info("Status: {}", result.getStatus());
+        LOGGER.info("Delete - Done");
+    }
+
 
     public void train(String projectArn, String versionName, String outputBucket, String outputFolder, String trainingBucket, String trainingManifest, String testingBucket, String testingManifest) {
         LOGGER.info("trainModel - Start");
