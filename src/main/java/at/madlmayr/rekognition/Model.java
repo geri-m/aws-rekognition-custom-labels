@@ -62,20 +62,31 @@ public class Model {
         LOGGER.info("Stop - Done");
     }
 
-    public void remove(String projectVersionArn) {
-        DeleteProjectRequest request = new DeleteProjectRequest().withProjectArn(projectVersionArn);
+    public void remove(String projectArn) {
+
+        DescribeProjectVersionsRequest request1 = new DescribeProjectVersionsRequest().withProjectArn(projectArn);
+        DescribeProjectVersionsResult r = rekognitionClient.describeProjectVersions(request1);
+
+        for (ProjectVersionDescription s : r.getProjectVersionDescriptions()) {
+            DeleteProjectVersionRequest request2 = new DeleteProjectVersionRequest().withProjectVersionArn(s.getProjectVersionArn());
+            DeleteProjectVersionResult result1 = rekognitionClient.deleteProjectVersion(request2);
+            LOGGER.info("Delete '{}' Project Version Arn done. Status '{}'", s.getProjectVersionArn(), result1.getStatus());
+        }
+
+        DeleteProjectRequest request = new DeleteProjectRequest().withProjectArn(projectArn);
         DeleteProjectResult result = rekognitionClient.deleteProject(request);
         LOGGER.info("Status: {}", result.getStatus());
         LOGGER.info("Delete - Done");
+
+
     }
 
 
-    public void train(String projectArn, String versionName, String outputBucket, String outputFolder, String trainingBucket, String trainingManifest, String testingBucket, String testingManifest) {
+    public String train(String projectArn, String versionName, String outputBucket, String outputFolder, String trainingBucket, String trainingManifest, String testingBucket, String testingManifest) {
         LOGGER.info("trainModel - Start");
         OutputConfig outputConfig = new OutputConfig()
                 .withS3Bucket(outputBucket)
                 .withS3KeyPrefix(outputFolder);
-
 
         GroundTruthManifest trainingGroundTruthManifest = new GroundTruthManifest()
                 .withS3Object(new S3Object()
@@ -113,7 +124,8 @@ public class Model {
 
         CreateProjectVersionResult result = rekognitionClient.createProjectVersion(request);
 
-        LOGGER.info("Model ARN: {}", result.getProjectVersionArn());
+        String projectVersionArn = result.getProjectVersionArn();
+        LOGGER.info("Model ARN: '{}'", result.getProjectVersionArn());
 
         DescribeProjectVersionsRequest describeProjectVersionsRequest = new DescribeProjectVersionsRequest()
                 .withVersionNames(versionName)
@@ -125,13 +137,16 @@ public class Model {
         DescribeProjectVersionsResult response = rekognitionClient.describeProjectVersions(describeProjectVersionsRequest);
 
         for (ProjectVersionDescription projectVersionDescription : response.getProjectVersionDescriptions()) {
-            LOGGER.info("Status: {}", projectVersionDescription.getStatus());
+            LOGGER.info("Status: '{}'", projectVersionDescription.getStatus());
         }
+
         LOGGER.info("trainModel - Done");
+
+        return projectVersionArn;
     }
 
     public void detect(String projectVersionArn, String bucket, String pathToImage) {
-        float minConfidence = 90;
+        float minConfidence = 70;
         DetectCustomLabelsRequest request = new DetectCustomLabelsRequest()
                 .withProjectVersionArn(projectVersionArn)
                 .withImage(new Image().withS3Object(new S3Object().withName(pathToImage).withBucket(bucket)))

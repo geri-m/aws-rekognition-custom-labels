@@ -18,6 +18,7 @@ public class ShoeClassificationDemo {
     public static void main(String[] args) throws Exception {
         ShoeClassificationDemo demo = new ShoeClassificationDemo();
         demo.createAndTrainModel();
+        demo.startAndRun();
         demo.cleanUp();
     }
 
@@ -34,7 +35,6 @@ public class ShoeClassificationDemo {
         String pathToTrainManifest = "shoes/train/train.manifest";
         String pathToTestManifest = "shoes/test/test.manifest";
 
-
         RemoteBucket r = new RemoteBucket(projectName);
         String bucketName = r.createBucket();
 
@@ -50,18 +50,22 @@ public class ShoeClassificationDemo {
 
         // The Version Contains the Date, in order not to accidentally overwrite an exiting version.
         String projectVersionArn = projectName.concat(".").concat(SIMPLE_DATE_FORMAT.format(new Date()));
-        LOGGER.info("ProjectVersionArn for the AWS Rekognition Model: '{}'", projectArn);
+        LOGGER.info("ProjectVersionArn for the AWS Rekognition Model: '{}'", projectVersionArn);
 
         // we save all the data to a properties file, in order to have it later for the restart of the second part.
-        properties.setProperty("projectArn", projectArn);
-        properties.setProperty("projectVersionArn", projectVersionArn);
-        properties.setProperty("bucketName", bucketName);
+        properties.setProperty("project-arn", projectArn);
+        properties.setProperty("project-version-arn", projectVersionArn);
+        properties.setProperty("bucket-name", bucketName);
 
-        properties.store(stream, "Writing Data");
+        properties.store(stream, "Writing Data, 1st drop");
+
+        LOGGER.info("We now start training the model. Training the model will take round about 60 minutes ...");
+        LOGGER.info("Feel free to CTRL+C and let the model train and come back later.");
+        String version = shoes.train(projectArn, projectVersionArn, bucketName, "output", bucketName, pathToTrainManifest, bucketName, pathToTestManifest);
+
+        properties.setProperty("model-version-arn", version);
+        properties.store(stream, "Writing Data, 2nd drop");
         stream.close();
-
-        LOGGER.info("We now start training the model. Training the model will take round about 60 minutes");
-        // shoes.train(projectArn, projectVersionArn , bucketName, "output", bucketName, pathToTrainManifest, bucketName, pathToTestManifest);
     }
 
     private void startAndRun() throws Exception {
@@ -76,23 +80,19 @@ public class ShoeClassificationDemo {
             return;
         }
 
+        String projectVersion = properties.getProperty("project-version");
         String projectArn = properties.getProperty("project-arn");
         String projectVersionArn = properties.getProperty("project-version-arn");
-        String projectVersion = properties.getProperty("project-version");
-        String bucketName = properties.getProperty("bucketName");
+        String bucketName = properties.getProperty("bucket-name");
 
         Model shoes = new Model();
+        LOGGER.info("Model is starting. This is taking round about 10 min");
         shoes.start(projectVersionArn, projectArn, projectVersion);
+        LOGGER.info("Bucket '{}'", bucketName);
+        shoes.detect(projectVersionArn, bucketName, "shoes/test/canvasshoes/26.jpg");
 
-        // dresses.stop(projectVersionArn);
-        /*
-        for (String image : images) {
-            dresses.detect(projectVersionArn, "madlmayr-dresses", image);
-        }
-        */
-
+        shoes.stop(projectVersionArn);
     }
-
 
     private void cleanUp() throws Exception {
         Properties properties = new Properties();
@@ -105,12 +105,12 @@ public class ShoeClassificationDemo {
             return;
         }
 
-        String projectArn = properties.getProperty("projectArn");
+        String projectArn = properties.getProperty("project-arn");
         Model shoes = new Model();
         LOGGER.info("Removing Project '{}'", projectArn);
         shoes.remove(projectArn);
 
-        String bucketName = properties.getProperty("bucketName");
+        String bucketName = properties.getProperty("bucket-name");
         LOGGER.info("Removing Bucket '{}'", bucketName);
         RemoteBucket.createExistingBucket(properties.getProperty("bucketName")).cleanup();
     }
